@@ -17,6 +17,9 @@
 #   --fetch
 #       Runs `git fetch` on all directories.
 #
+#   --pull
+#       Runs `git pull --ff-only` on all directories.
+#
 # Unsupported ls options::
 #   --format=(commas|vertical|across|horizontal)
 #   -c | -x | -m
@@ -103,6 +106,7 @@ ls_switches=()
 special=
 warned=false
 run_git_fetch=false
+run_git_pull=false
 # Track the switches we pass to ls in ls_switches
 while [[ "${1:0:1}" == '-' && "$1" != '--' ]] ; do
     switch="$1"
@@ -141,6 +145,10 @@ while [[ "${1:0:1}" == '-' && "$1" != '--' ]] ; do
         continue
     elif [[ "$switch" =~ ^--(fetch)$ ]] ; then
         run_git_fetch=true
+        shift
+        continue
+    elif [[ "$switch" =~ ^--(pull)$ ]] ; then
+        run_git_pull=true
         shift
         continue
     fi
@@ -467,6 +475,18 @@ function possibly_run_git_fetch() {
     fi
 }
 
+##
+# Runs "git pull" on the firectory
+#
+function possibly_run_git_pull() {
+    local dir="$1"
+    if $run_git_pull ; then
+        cd "$dir" || return 0
+        git pull --ff-only || :
+        cd ..
+    fi
+}
+
 
 ##
 # Get the name of a branch, for a given directory
@@ -717,6 +737,7 @@ for spec in "${ls_dirs[@]}" ; do
 
             if [[ -d "$specdir/$name/.git" || -f "$specdir/$name/.git" ]] ; then
                 possibly_run_git_fetch "$specdir/$name"
+                possibly_run_git_pull "$specdir/$name"
                 # That object is a directory, and is a git repository.
                 branch="$(git_branch_for_dir "$specdir/$name")"
                 delta="$(git_relative_state "$specdir/$name")"
